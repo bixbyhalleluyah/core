@@ -186,6 +186,7 @@ export {
   EndpointPool,
   configureEndpointFailover,
   getEndpointPool,
+  resetEndpointPools,
   createFailoverFetch,
   validateEndpointList,
 } from "./endpointFailover";

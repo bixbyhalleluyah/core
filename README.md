@@ -127,6 +127,17 @@ if (tx.status === "ok") {
 
 ---
 
+## Client Resource Ownership & Lifecycle
+
+Applications need clear boundaries on whether shared clients own connections, timers, or background subscriptions so they can reuse and close them cleanly:
+
+- **`createSorokitClient` (Stateless Client)**: `SorokitClient` does not own persistent background connections, open sockets, or unmanaged timers. It can be safely reused as a singleton across your application or instantiated per-request in serverless handlers without leaking memory or handles.
+- **`ConnectionPool` (HTTP Connections)**: Owns idle keep-alive timers and queued requests. When you configure a custom pool via `setConnectionPool(pool)`, call `pool.close()` when shutting down or tearing down your application.
+- **`EndpointPool` (Failover & Health Checks)**: Background health monitoring initiated by `pool.startHealthMonitoring()` creates an active timer. Call the returned cleanup function or `pool.stopHealthMonitoring()` to clear the timer. In test suites, call `resetEndpointPools()` or `resetServerFactory()` to reset global state.
+- **Subscriptions & Feeds**: Event streams and WebSocket subscriptions (such as `subscribePrices`, `createWebSocketTransactionFeed`, or `streamTransactionStatus`) return explicit handles (`unsubscribe()`, `close()`, or `stop()`). Consumers own their lifecycle and should invoke teardown upon component unmount or task completion.
+
+---
+
 ## API Reference
 
 The [hosted API reference](https://tochukwujustice.github.io/core/) is published by
@@ -436,6 +447,19 @@ const client = createSorokitClient({
 // Dynamic network switching (new)
 client.network.switchNetwork("mainnet"); // Switch at runtime
 
+// Multi-endpoint failover and resilient configuration
+const failoverClient = createSorokitClient({
+  network: "mainnet",
+  horizonEndpoints: [
+    "https://horizon.stellar.org",
+    "https://horizon-backup.example.com",
+  ],
+  rpcEndpoints: [
+    "https://soroban-rpc.stellar.org",
+    "https://soroban-backup.example.com",
+  ],
+});
+
 // Network resolution (new)
 const resolved = await client.network.resolveNetwork("testnet");
 if (resolved.status === "ok") {
@@ -448,6 +472,7 @@ if (resolved.status === "ok") {
 - `circuitBreaker` - Automatic retry logic with exponential backoff
 - `networkSwitcher` - Switch between networks without recreating client
 - `resolveNetwork` - Programmatic network endpoint resolution
+- `multiEndpointFailover` - Ordered primary and backup endpoint pools with automatic recovery and health checks (see [Multi-Endpoint Failover Guide](docs/recipes/21-multi-endpoint-failover.md) and [ADR-006](docs/adr/006-multi-endpoint-failover-and-graceful-degradation.md))
 
 ---
 

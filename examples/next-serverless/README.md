@@ -45,6 +45,13 @@ STELLAR_NETWORK=testnet
 variable and never expose it to the browser. The API routes in this example are
 server-only (`pages/api/`) and Next.js never bundles them into the client.
 
+## Client Resource Ownership & Reuse
+
+`createSorokitClient` produces a lightweight facade with no background sockets or keep-alive timers. In serverless and edge environments:
+- **Client Reuse**: You can instantiate a client once globally or create it per request with zero overhead.
+- **Connection Pools**: If using a custom `ConnectionPool`, the application owns its lifecycle and should call `pool.close()` when gracefully terminating the worker or container.
+- **Failover Monitors**: If `EndpointPool.startHealthMonitoring()` is used, remember to invoke the returned unregister callback or `pool.stopHealthMonitoring()` so timers do not prevent clean process exit.
+
 ## Running type-checks
 
 ```bash
